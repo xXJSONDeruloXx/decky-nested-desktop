@@ -10,15 +10,6 @@ import decky
 import asyncio
 
 class Plugin:
-    # A normal method. It can be called from the TypeScript side using @decky/api.
-    async def add(self, left: int, right: int) -> int:
-        return left + right
-
-    async def long_running(self):
-        await asyncio.sleep(15)
-        # Passing through a bunch of random data, just as an example
-        await decky.emit("timer_event", "Hello from the backend!", True, 2)
-
     # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
         self.loop = asyncio.get_event_loop()
@@ -35,9 +26,6 @@ class Plugin:
     async def _uninstall(self):
         decky.logger.info("Goodbye World!")
         pass
-
-    async def start_timer(self):
-        self.loop.create_task(self.long_running())
 
     async def get_nested_desktop_shortcut_id(self) -> int:
         """Get or create a Steam shortcut for the nested desktop"""
