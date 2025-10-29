@@ -132,6 +132,70 @@ class Plugin:
         """Get the absolute path to the launch script"""
         script_path = Path(decky.DECKY_PLUGIN_DIR) / "bin" / "launch_plasma.sh"
         return str(script_path.absolute())
+    
+    async def create_nested_desktop_shortcut(self) -> dict:
+        """Create a Steam shortcut for the steamos-nested-desktop file"""
+        try:
+            desktop_file = "/usr/share/applications/steam/steamos-nested-desktop"
+            
+            if not os.path.exists(desktop_file):
+                return {"success": False, "message": f"Desktop file not found at {desktop_file}"}
+            
+            # We'll use xdg-open to launch the .desktop file
+            # Return info needed for the frontend to create the shortcut
+            return {
+                "success": True,
+                "desktop_file": desktop_file,
+                "name": "Nested Desktop",
+                "message": "Ready to create shortcut"
+            }
+        except Exception as e:
+            decky.logger.error(f"Error preparing nested desktop shortcut: {str(e)}")
+            return {"success": False, "message": f"Exception: {str(e)}"}
+    
+    async def launch_nested_desktop_shortcut(self) -> dict:
+        """Launch the steamos-nested-desktop file"""
+        try:
+            desktop_file = "/usr/share/applications/steam/steamos-nested-desktop"
+            
+            if not os.path.exists(desktop_file):
+                return {"success": False, "message": f"Desktop file not found at {desktop_file}"}
+            
+            decky.logger.info(f"Launching nested desktop via {desktop_file}")
+            
+            # Launch the .desktop file using gtk-launch or xdg-open
+            deck_user = getattr(decky, "DECKY_USER", "deck")
+            
+            # Try gtk-launch first (preferred for .desktop files)
+            command = ['sudo', '-u', deck_user, 'gtk-launch', 'steamos-nested-desktop']
+            
+            process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            
+            # Give it a moment to start
+            try:
+                await asyncio.wait_for(process.wait(), timeout=2.0)
+                stdout, stderr = await process.communicate()
+                stdout_text = stdout.decode().strip() if stdout else ""
+                stderr_text = stderr.decode().strip() if stderr else ""
+                
+                if process.returncode != 0:
+                    error_msg = stderr_text or stdout_text or "Failed to launch"
+                    decky.logger.error(f"Failed to launch: {error_msg}")
+                    return {"success": False, "message": f"Error: {error_msg}"}
+                
+                return {"success": True, "message": "Nested Desktop launched"}
+            except asyncio.TimeoutError:
+                # Process is still running, which is good
+                decky.logger.info("Nested Desktop launched (running in background)")
+                return {"success": True, "message": "Nested Desktop launched"}
+                
+        except Exception as e:
+            decky.logger.error(f"Exception launching nested desktop: {str(e)}")
+            return {"success": False, "message": f"Exception: {str(e)}"}
     # Migrations that should be performed before entering `_main()`.
     async def _migration(self):
         decky.logger.info("Migrating")

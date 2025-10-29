@@ -29,9 +29,8 @@ const add = callable<[first: number, second: number], number>("add");
 const startTimer = callable<[], void>("start_timer");
 
 // Get or create the shortcut ID for nested desktop
-const getNestedDesktopShortcutId = callable<[], number>("get_nested_desktop_shortcut_id");
-const saveNestedDesktopShortcutId = callable<[shortcutId: number], boolean>("save_nested_desktop_shortcut_id");
-const getScriptPath = callable<[], string>("get_script_path");
+const createNestedDesktopShortcut = callable<[], any>("create_nested_desktop_shortcut");
+const launchNestedDesktopShortcut = callable<[], any>("launch_nested_desktop_shortcut");
 
 function Content() {
   const [result, setResult] = useState<number | undefined>();
@@ -41,63 +40,62 @@ function Content() {
     setResult(result);
   };
 
-  const launchNestedDesktop = async () => {
+  const createShortcut = async () => {
     try {
-      // Get the shortcut ID (creates it if it doesn't exist)
-      let shortcutId = await getNestedDesktopShortcutId();
+      const result = await createNestedDesktopShortcut();
       
-      // If no shortcut exists, create one
-      if (shortcutId <= 0) {
-        const scriptPath = await getScriptPath();
-        
-        // Create the shortcut
-        // @ts-ignore - SteamClient is available at runtime
-        shortcutId = await SteamClient.Apps.AddShortcut(
-          "Nested Desktop",
-          scriptPath,
-          scriptPath,
-          ""
-        );
-        
-        if (shortcutId <= 0) {
-          toaster.toast({
-            title: "Error",
-            body: "Failed to create shortcut"
-          });
-          return;
-        }
-        
-        // Save the shortcut ID for future use
-        await saveNestedDesktopShortcutId(shortcutId);
-        
-        // Set the shortcut name and executable
-        // @ts-ignore
-        setTimeout(() => {
-          SteamClient.Apps.SetShortcutName(shortcutId, "Nested Desktop");
-          SteamClient.Apps.SetShortcutExe(shortcutId, `"${scriptPath}"`);
-          SteamClient.Apps.SetShortcutLaunchOptions(shortcutId, "");
-        }, 500);
-      }
-
-      // Get the game ID from the app ID
-      // @ts-ignore - SteamClient is available at runtime
-      const appOverview = appStore.GetAppOverviewByAppID(shortcutId);
-      if (!appOverview) {
+      if (!result.success) {
         toaster.toast({
           title: "Error",
-          body: "Failed to find shortcut. Please restart Steam."
+          body: result.message || "Failed to create shortcut"
         });
         return;
       }
 
-      // Launch via Steam's game running system
+      // Create the shortcut using Steam's API
       // @ts-ignore - SteamClient is available at runtime
-      SteamClient.Apps.RunGame(appOverview.m_gameid, "", -1, 100);
+      const shortcutId = await SteamClient.Apps.AddShortcut(
+        result.name,
+        result.desktop_file,
+        result.desktop_file,
+        ""
+      );
       
+      if (shortcutId <= 0) {
+        toaster.toast({
+          title: "Error",
+          body: "Failed to create Steam shortcut"
+        });
+        return;
+      }
+
       toaster.toast({
-        title: "Nested Desktop",
-        body: "Launching..."
+        title: "Success",
+        body: "Nested Desktop shortcut created!"
       });
+    } catch (error) {
+      toaster.toast({
+        title: "Error",
+        body: String(error)
+      });
+    }
+  };
+
+  const launchShortcut = async () => {
+    try {
+      const result = await launchNestedDesktopShortcut();
+      
+      if (result.success) {
+        toaster.toast({
+          title: "Nested Desktop",
+          body: result.message || "Launching..."
+        });
+      } else {
+        toaster.toast({
+          title: "Error",
+          body: result.message || "Failed to launch"
+        });
+      }
     } catch (error) {
       toaster.toast({
         title: "Error",
@@ -128,7 +126,16 @@ function Content() {
       <PanelSectionRow>
         <ButtonItem
           layout="below"
-          onClick={launchNestedDesktop}
+          onClick={createShortcut}
+        >
+          {"Create Nested Desktop Shortcut"}
+        </ButtonItem>
+      </PanelSectionRow>
+
+      <PanelSectionRow>
+        <ButtonItem
+          layout="below"
+          onClick={launchShortcut}
         >
           {"Launch Nested Desktop"}
         </ButtonItem>
