@@ -28,6 +28,9 @@ const add = callable<[first: number, second: number], number>("add");
 // It starts a (python) timer which eventually emits the event 'timer_event'
 const startTimer = callable<[], void>("start_timer");
 
+// This function calls the python function "start_plasma_wayland", which starts a Plasma Wayland session
+const startPlasmaWayland = callable<[], { success: boolean; message: string }>("start_plasma_wayland");
+
 function Content() {
   const [result, setResult] = useState<number | undefined>();
 
@@ -52,6 +55,28 @@ function Content() {
           onClick={() => startTimer()}
         >
           {"Start Python timer"}
+        </ButtonItem>
+      </PanelSectionRow>
+
+      <PanelSectionRow>
+        <ButtonItem
+          layout="below"
+          onClick={async () => {
+            const result = await startPlasmaWayland();
+            if (result.success) {
+              toaster.toast({
+                title: "Plasma Wayland",
+                body: result.message
+              });
+            } else {
+              toaster.toast({
+                title: "Error",
+                body: result.message,
+              });
+            }
+          }}
+        >
+          {"Start Plasma Wayland"}
         </ButtonItem>
       </PanelSectionRow>
 
