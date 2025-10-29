@@ -32,6 +32,7 @@ const startTimer = callable<[], void>("start_timer");
 const createNestedDesktopShortcut = callable<[], any>("create_nested_desktop_shortcut");
 const launchNestedDesktopShortcut = callable<[], any>("launch_nested_desktop_shortcut");
 const saveNestedDesktopShortcutId = callable<[shortcutId: number], boolean>("save_nested_desktop_shortcut_id");
+const getNestedDesktopArtwork = callable<[], any>("get_nested_desktop_artwork");
 
 function Content() {
   const [result, setResult] = useState<number | undefined>();
@@ -73,9 +74,34 @@ function Content() {
       // Save the shortcut ID for later use
       await saveNestedDesktopShortcutId(shortcutId);
 
+      // Get and apply artwork
+      const artworkResult = await getNestedDesktopArtwork();
+      if (artworkResult.success && artworkResult.artwork) {
+        const artwork = artworkResult.artwork;
+        
+        // Apply artwork using SteamClient API
+        // Types: 0 = Grid (vertical), 1 = Hero (wide banner), 2 = Logo, 3 = GridH (horizontal)
+        // @ts-ignore - SteamClient is available at runtime
+        if (artwork.grid) {
+          SteamClient.Apps.SetCustomArtworkForApp(shortcutId, artwork.grid, "jpg", 0);
+        }
+        // @ts-ignore
+        if (artwork.hero) {
+          SteamClient.Apps.SetCustomArtworkForApp(shortcutId, artwork.hero, "jpg", 1);
+        }
+        // @ts-ignore
+        if (artwork.logo) {
+          SteamClient.Apps.SetCustomArtworkForApp(shortcutId, artwork.logo, "png", 2);
+        }
+        // @ts-ignore
+        if (artwork.gridH) {
+          SteamClient.Apps.SetCustomArtworkForApp(shortcutId, artwork.gridH, "jpg", 3);
+        }
+      }
+
       toaster.toast({
         title: "Success",
-        body: "Nested Desktop shortcut created!"
+        body: "Nested Desktop shortcut created with artwork!"
       });
     } catch (error) {
       toaster.toast({
