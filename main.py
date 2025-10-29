@@ -1,5 +1,5 @@
 import os
-import pwd
+import subprocess
 from pathlib import Path
 
 # The decky plugin module is located at decky-loader/plugin
@@ -39,98 +39,55 @@ class Plugin:
         self.loop.create_task(self.long_running())
 
     async def start_plasma_wayland(self):
-        """Execute the Plasma Wayland script"""
+        """Launch Plasma Wayland via a simple script approach"""
         try:
             decky.logger.info("Starting Plasma Wayland session...")
             
-            # Create a clean environment but preserve session-critical variables
-            # Start with a copy and remove only the problematic library variables
-            clean_env = os.environ.copy()
-            clean_env.pop('LD_PRELOAD', None)
-            clean_env.pop('LD_LIBRARY_PATH', None)
+            # Path to the launch script
+            script_path = Path(decky.DECKY_PLUGIN_DIR) / "bin" / "launch_plasma.sh"
             
-            # Ensure UTF-8 locale
-            clean_env.setdefault('LC_ALL', 'C.UTF-8')
-            clean_env.setdefault('LANG', 'C.UTF-8')
-
-            # Derive the Deck user details even when the plugin runs as root
-            deck_user = getattr(decky, "DECKY_USER", None)
-            deck_home = getattr(decky, "DECKY_USER_HOME", None)
-            if not deck_user and deck_home:
-                deck_user = Path(deck_home).name
-            if not deck_user:
-                raise RuntimeError("Unable to determine Deck user from decky environment")
-
-            try:
-                deck_uid = pwd.getpwnam(deck_user).pw_uid
-            except KeyError as exc:
-                raise RuntimeError(f"Unable to resolve uid for user '{deck_user}'") from exc
-
-            runtime_dir = Path(f"/run/user/{deck_uid}")
-            if not runtime_dir.is_dir():
-                raise RuntimeError(
-                    f"XDG_RUNTIME_DIR missing at {runtime_dir}; ensure Deck user session is active"
-                )
-
-            bus_path = runtime_dir / 'bus'
-            if not bus_path.exists():
-                raise RuntimeError(
-                    f"DBUS session bus not found at {bus_path}; ensure Deck user session is active"
-                )
-
-            clean_env['XDG_RUNTIME_DIR'] = str(runtime_dir)
-            clean_env['DBUS_SESSION_BUS_ADDRESS'] = f"unix:path={bus_path}"
-            clean_env['USER'] = deck_user
-            clean_env['LOGNAME'] = deck_user
+            if not script_path.exists():
+                raise RuntimeError(f"Launch script not found at {script_path}")
             
-            # Get DISPLAY value
-            display = clean_env.get('DISPLAY', ':0')
+            # Make sure script is executable
+            script_path.chmod(0o755)
             
-            # Use systemd-run to start it as a proper user service
-            # This gives it a clean session context
-            command = [
-                'sudo',
-                '-E',
-                '-u', deck_user,
-                'systemd-run',
-                '--user',
-                '--scope',
-                '--collect',
-                'startplasma-wayland',
-                '--xwayland',
-                '--x11-display', display,
-                '--no-lockscreen',
-                '--width', '1280',
-                '--height', '800',
-                '--',
-                'plasma_session'
-            ]
+            # Get the deck user
+            deck_user = getattr(decky, "DECKY_USER", "deck")
             
-            # Execute the command with cleaned environment
+            # Run the script as the deck user using sudo
+            command = ['sudo', '-u', deck_user, str(script_path)]
+            
+            decky.logger.info(f"Executing: {' '.join(command)}")
+            
+            # Execute the command in the background
             process = await asyncio.create_subprocess_exec(
                 *command,
-                env=clean_env,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
             
-            stdout, stderr = await process.communicate()
-            stdout_text = stdout.decode().strip() if stdout else ""
-            stderr_text = stderr.decode().strip() if stderr else ""
-
-            if process.returncode == 0:
-                if stdout_text:
-                    decky.logger.info(f"Plasma Wayland launch scheduled: {stdout_text}")
-                else:
-                    decky.logger.info("Plasma Wayland launch scheduled")
-                return {
-                    "success": True,
-                    "message": stdout_text or "Plasma Wayland start requested successfully"
-                }
-
-            error_msg = stderr_text or stdout_text or "systemd-run exited with non-zero status"
-            decky.logger.error(f"Failed to start Plasma Wayland: {error_msg}")
-            return {"success": False, "message": f"Error: {error_msg}"}
+            # Give it a moment to start
+            try:
+                await asyncio.wait_for(process.wait(), timeout=2.0)
+                # If it exits within 2 seconds, something likely went wrong
+                stdout, stderr = await process.communicate()
+                stdout_text = stdout.decode().strip() if stdout else ""
+                stderr_text = stderr.decode().strip() if stderr else ""
+                
+                if process.returncode != 0:
+                    error_msg = stderr_text or stdout_text or "Script exited with error"
+                    decky.logger.error(f"Failed to start: {error_msg}")
+                    return {"success": False, "message": f"Error: {error_msg}"}
+                
+                # Process exited cleanly within 2 seconds
+                decky.logger.info(f"Script completed: {stdout_text}")
+                return {"success": True, "message": stdout_text or "Launched successfully"}
+            except asyncio.TimeoutError:
+                # Process is still running after 2 seconds, which is good for a background service
+                decky.logger.info("Plasma Wayland launch initiated (running in background)")
+                return {"success": True, "message": "Plasma Wayland started in background"}
+                
         except Exception as e:
             decky.logger.error(f"Exception starting Plasma Wayland: {str(e)}")
             return {"success": False, "message": f"Exception: {str(e)}"}
