@@ -28,8 +28,10 @@ const add = callable<[first: number, second: number], number>("add");
 // It starts a (python) timer which eventually emits the event 'timer_event'
 const startTimer = callable<[], void>("start_timer");
 
-// This function calls the python function "start_plasma_wayland", which starts a Plasma Wayland session
-const startPlasmaWayland = callable<[], { success: boolean; message: string }>("start_plasma_wayland");
+// Get or create the shortcut ID for nested desktop
+const getNestedDesktopShortcutId = callable<[], number>("get_nested_desktop_shortcut_id");
+const saveNestedDesktopShortcutId = callable<[shortcutId: number], boolean>("save_nested_desktop_shortcut_id");
+const getScriptPath = callable<[], string>("get_script_path");
 
 function Content() {
   const [result, setResult] = useState<number | undefined>();
@@ -37,6 +39,71 @@ function Content() {
   const onClick = async () => {
     const result = await add(Math.random(), Math.random());
     setResult(result);
+  };
+
+  const launchNestedDesktop = async () => {
+    try {
+      // Get the shortcut ID (creates it if it doesn't exist)
+      let shortcutId = await getNestedDesktopShortcutId();
+      
+      // If no shortcut exists, create one
+      if (shortcutId <= 0) {
+        const scriptPath = await getScriptPath();
+        
+        // Create the shortcut
+        // @ts-ignore - SteamClient is available at runtime
+        shortcutId = await SteamClient.Apps.AddShortcut(
+          "Nested Desktop",
+          scriptPath,
+          scriptPath,
+          ""
+        );
+        
+        if (shortcutId <= 0) {
+          toaster.toast({
+            title: "Error",
+            body: "Failed to create shortcut"
+          });
+          return;
+        }
+        
+        // Save the shortcut ID for future use
+        await saveNestedDesktopShortcutId(shortcutId);
+        
+        // Set the shortcut name and executable
+        // @ts-ignore
+        setTimeout(() => {
+          SteamClient.Apps.SetShortcutName(shortcutId, "Nested Desktop");
+          SteamClient.Apps.SetShortcutExe(shortcutId, `"${scriptPath}"`);
+          SteamClient.Apps.SetShortcutLaunchOptions(shortcutId, "");
+        }, 500);
+      }
+
+      // Get the game ID from the app ID
+      // @ts-ignore - SteamClient is available at runtime
+      const appOverview = appStore.GetAppOverviewByAppID(shortcutId);
+      if (!appOverview) {
+        toaster.toast({
+          title: "Error",
+          body: "Failed to find shortcut. Please restart Steam."
+        });
+        return;
+      }
+
+      // Launch via Steam's game running system
+      // @ts-ignore - SteamClient is available at runtime
+      SteamClient.Apps.RunGame(appOverview.m_gameid, "", -1, 100);
+      
+      toaster.toast({
+        title: "Nested Desktop",
+        body: "Launching..."
+      });
+    } catch (error) {
+      toaster.toast({
+        title: "Error",
+        body: String(error)
+      });
+    }
   };
 
   return (
@@ -61,22 +128,9 @@ function Content() {
       <PanelSectionRow>
         <ButtonItem
           layout="below"
-          onClick={async () => {
-            const result = await startPlasmaWayland();
-            if (result.success) {
-              toaster.toast({
-                title: "Plasma Wayland",
-                body: result.message
-              });
-            } else {
-              toaster.toast({
-                title: "Error",
-                body: result.message,
-              });
-            }
-          }}
+          onClick={launchNestedDesktop}
         >
-          {"Start Plasma Wayland"}
+          {"Launch Nested Desktop"}
         </ButtonItem>
       </PanelSectionRow>
 

@@ -38,8 +38,44 @@ class Plugin:
     async def start_timer(self):
         self.loop.create_task(self.long_running())
 
+    async def get_nested_desktop_shortcut_id(self) -> int:
+        """Get or create a Steam shortcut for the nested desktop"""
+        try:
+            # Path to store the shortcut ID
+            shortcut_id_file = Path(decky.DECKY_PLUGIN_SETTINGS_DIR) / "nested_desktop_shortcut_id.txt"
+            
+            # Try to read existing shortcut ID
+            if shortcut_id_file.exists():
+                try:
+                    stored_id = int(shortcut_id_file.read_text().strip())
+                    # Verify the shortcut still exists by trying to get its info
+                    # The frontend will verify this with appStore
+                    return stored_id
+                except (ValueError, IOError):
+                    pass
+            
+            # If we get here, we need to create a new shortcut
+            # We'll return -1 to signal the frontend should create it
+            # The frontend has access to SteamClient.Apps.AddShortcut
+            return -1
+            
+        except Exception as e:
+            decky.logger.error(f"Error managing shortcut ID: {str(e)}")
+            return -1
+    
+    async def save_nested_desktop_shortcut_id(self, shortcut_id: int):
+        """Save the shortcut ID for future use"""
+        try:
+            shortcut_id_file = Path(decky.DECKY_PLUGIN_SETTINGS_DIR) / "nested_desktop_shortcut_id.txt"
+            shortcut_id_file.write_text(str(shortcut_id))
+            decky.logger.info(f"Saved shortcut ID: {shortcut_id}")
+            return True
+        except Exception as e:
+            decky.logger.error(f"Error saving shortcut ID: {str(e)}")
+            return False
+
     async def start_plasma_wayland(self):
-        """Launch Plasma Wayland via a simple script approach"""
+        """Launch Plasma Wayland via a simple script approach - DEPRECATED, use Steam shortcut instead"""
         try:
             decky.logger.info("Starting Plasma Wayland session...")
             
@@ -92,6 +128,10 @@ class Plugin:
             decky.logger.error(f"Exception starting Plasma Wayland: {str(e)}")
             return {"success": False, "message": f"Exception: {str(e)}"}
 
+    async def get_script_path(self) -> str:
+        """Get the absolute path to the launch script"""
+        script_path = Path(decky.DECKY_PLUGIN_DIR) / "bin" / "launch_plasma.sh"
+        return str(script_path.absolute())
     # Migrations that should be performed before entering `_main()`.
     async def _migration(self):
         decky.logger.info("Migrating")
