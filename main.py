@@ -136,12 +136,11 @@ class Plugin:
     async def create_nested_desktop_shortcut(self) -> dict:
         """Create a Steam shortcut for the steamos-nested-desktop file"""
         try:
-            desktop_file = "/usr/share/applications/steam/steamos-nested-desktop"
+            desktop_file = "/usr/share/applications/steam/steamos-nested-desktop/steamos-nested-desktop.desktop"
             
             if not os.path.exists(desktop_file):
                 return {"success": False, "message": f"Desktop file not found at {desktop_file}"}
             
-            # We'll use xdg-open to launch the .desktop file
             # Return info needed for the frontend to create the shortcut
             return {
                 "success": True,
@@ -154,48 +153,42 @@ class Plugin:
             return {"success": False, "message": f"Exception: {str(e)}"}
     
     async def launch_nested_desktop_shortcut(self) -> dict:
-        """Launch the steamos-nested-desktop file"""
+        """Get the shortcut ID for launching - actual launch happens in frontend via SteamClient"""
         try:
-            desktop_file = "/usr/share/applications/steam/steamos-nested-desktop"
+            desktop_file = "/usr/share/applications/steam/steamos-nested-desktop/steamos-nested-desktop.desktop"
             
             if not os.path.exists(desktop_file):
                 return {"success": False, "message": f"Desktop file not found at {desktop_file}"}
             
-            decky.logger.info(f"Launching nested desktop via {desktop_file}")
+            # Path to store the shortcut ID
+            shortcut_id_file = Path(decky.DECKY_PLUGIN_SETTINGS_DIR) / "nested_desktop_shortcut_id.txt"
             
-            # Launch the .desktop file using gtk-launch or xdg-open
-            deck_user = getattr(decky, "DECKY_USER", "deck")
+            # Try to read existing shortcut ID
+            if shortcut_id_file.exists():
+                try:
+                    stored_id = int(shortcut_id_file.read_text().strip())
+                    decky.logger.info(f"Found existing shortcut ID: {stored_id}")
+                    return {"success": True, "shortcut_id": stored_id, "message": "Ready to launch"}
+                except (ValueError, IOError) as e:
+                    decky.logger.error(f"Error reading shortcut ID: {str(e)}")
             
-            # Try gtk-launch first (preferred for .desktop files)
-            command = ['sudo', '-u', deck_user, 'gtk-launch', 'steamos-nested-desktop']
-            
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            # Give it a moment to start
-            try:
-                await asyncio.wait_for(process.wait(), timeout=2.0)
-                stdout, stderr = await process.communicate()
-                stdout_text = stdout.decode().strip() if stdout else ""
-                stderr_text = stderr.decode().strip() if stderr else ""
-                
-                if process.returncode != 0:
-                    error_msg = stderr_text or stdout_text or "Failed to launch"
-                    decky.logger.error(f"Failed to launch: {error_msg}")
-                    return {"success": False, "message": f"Error: {error_msg}"}
-                
-                return {"success": True, "message": "Nested Desktop launched"}
-            except asyncio.TimeoutError:
-                # Process is still running, which is good
-                decky.logger.info("Nested Desktop launched (running in background)")
-                return {"success": True, "message": "Nested Desktop launched"}
+            # No valid shortcut ID found
+            return {"success": False, "message": "No shortcut found. Please create one first."}
                 
         except Exception as e:
-            decky.logger.error(f"Exception launching nested desktop: {str(e)}")
+            decky.logger.error(f"Exception getting shortcut ID: {str(e)}")
             return {"success": False, "message": f"Exception: {str(e)}"}
+    
+    async def save_nested_desktop_shortcut_id(self, shortcut_id: int) -> bool:
+        """Save the shortcut ID for future use"""
+        try:
+            shortcut_id_file = Path(decky.DECKY_PLUGIN_SETTINGS_DIR) / "nested_desktop_shortcut_id.txt"
+            shortcut_id_file.write_text(str(shortcut_id))
+            decky.logger.info(f"Saved nested desktop shortcut ID: {shortcut_id}")
+            return True
+        except Exception as e:
+            decky.logger.error(f"Error saving shortcut ID: {str(e)}")
+            return False
     # Migrations that should be performed before entering `_main()`.
     async def _migration(self):
         decky.logger.info("Migrating")

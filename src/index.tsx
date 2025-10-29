@@ -31,6 +31,7 @@ const startTimer = callable<[], void>("start_timer");
 // Get or create the shortcut ID for nested desktop
 const createNestedDesktopShortcut = callable<[], any>("create_nested_desktop_shortcut");
 const launchNestedDesktopShortcut = callable<[], any>("launch_nested_desktop_shortcut");
+const saveNestedDesktopShortcutId = callable<[shortcutId: number], boolean>("save_nested_desktop_shortcut_id");
 
 function Content() {
   const [result, setResult] = useState<number | undefined>();
@@ -69,6 +70,9 @@ function Content() {
         return;
       }
 
+      // Save the shortcut ID for later use
+      await saveNestedDesktopShortcutId(shortcutId);
+
       toaster.toast({
         title: "Success",
         body: "Nested Desktop shortcut created!"
@@ -85,17 +89,36 @@ function Content() {
     try {
       const result = await launchNestedDesktopShortcut();
       
-      if (result.success) {
-        toaster.toast({
-          title: "Nested Desktop",
-          body: result.message || "Launching..."
-        });
-      } else {
+      if (!result.success) {
         toaster.toast({
           title: "Error",
           body: result.message || "Failed to launch"
         });
+        return;
       }
+
+      // Get the shortcut ID from the backend
+      const shortcutId = result.shortcut_id;
+      
+      // Get the game ID from the app ID
+      // @ts-ignore - appStore is available at runtime
+      const appOverview = appStore.GetAppOverviewByAppID(shortcutId);
+      if (!appOverview) {
+        toaster.toast({
+          title: "Error",
+          body: "Shortcut not found. Please create it first or restart Steam."
+        });
+        return;
+      }
+
+      // Launch via Steam's game running system
+      // @ts-ignore - SteamClient is available at runtime
+      SteamClient.Apps.RunGame(appOverview.m_gameid, "", -1, 100);
+      
+      toaster.toast({
+        title: "Nested Desktop",
+        body: "Launching..."
+      });
     } catch (error) {
       toaster.toast({
         title: "Error",
