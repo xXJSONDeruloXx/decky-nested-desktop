@@ -5,6 +5,7 @@
   "api_version": 1,
   "publish": {
     "tags": ["nested-desktop", "root"],
-    "description": "Create and launch nested desktop shortcuts for Steam Deck"
+    "description": "Create and launch nested desktop shortcuts for Steam Deck",
+    "image": "https://raw.githubusercontent.com/xXJSONDeruloXx/decky-nested-desktop/refs/heads/main/assets/image.png"
   }
 }
