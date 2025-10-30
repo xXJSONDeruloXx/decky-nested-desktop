@@ -63,65 +63,6 @@ class Plugin:
             decky.logger.error(f"Error saving shortcut ID: {str(e)}")
             return False
 
-    async def start_plasma_wayland(self):
-        """Launch Plasma Wayland via a simple script approach - DEPRECATED, use Steam shortcut instead"""
-        try:
-            decky.logger.info("Starting Plasma Wayland session...")
-            
-            # Path to the launch script
-            script_path = Path(decky.DECKY_PLUGIN_DIR) / "bin" / "launch_plasma.sh"
-            
-            if not script_path.exists():
-                raise RuntimeError(f"Launch script not found at {script_path}")
-            
-            # Make sure script is executable
-            script_path.chmod(0o755)
-            
-            # Get the deck user
-            deck_user = getattr(decky, "DECKY_USER", "deck")
-            
-            # Run the script as the deck user using sudo
-            command = ['sudo', '-u', deck_user, str(script_path)]
-            
-            decky.logger.info(f"Executing: {' '.join(command)}")
-            
-            # Execute the command in the background
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            
-            # Give it a moment to start
-            try:
-                await asyncio.wait_for(process.wait(), timeout=2.0)
-                # If it exits within 2 seconds, something likely went wrong
-                stdout, stderr = await process.communicate()
-                stdout_text = stdout.decode().strip() if stdout else ""
-                stderr_text = stderr.decode().strip() if stderr else ""
-                
-                if process.returncode != 0:
-                    error_msg = stderr_text or stdout_text or "Script exited with error"
-                    decky.logger.error(f"Failed to start: {error_msg}")
-                    return {"success": False, "message": f"Error: {error_msg}"}
-                
-                # Process exited cleanly within 2 seconds
-                decky.logger.info(f"Script completed: {stdout_text}")
-                return {"success": True, "message": stdout_text or "Launched successfully"}
-            except asyncio.TimeoutError:
-                # Process is still running after 2 seconds, which is good for a background service
-                decky.logger.info("Plasma Wayland launch initiated (running in background)")
-                return {"success": True, "message": "Plasma Wayland started in background"}
-                
-        except Exception as e:
-            decky.logger.error(f"Exception starting Plasma Wayland: {str(e)}")
-            return {"success": False, "message": f"Exception: {str(e)}"}
-
-    async def get_script_path(self) -> str:
-        """Get the absolute path to the launch script"""
-        script_path = Path(decky.DECKY_PLUGIN_DIR) / "bin" / "launch_plasma.sh"
-        return str(script_path.absolute())
-    
     async def create_nested_desktop_shortcut(self) -> dict:
         """Create a Steam shortcut for the steamos-nested-desktop file"""
         try:
