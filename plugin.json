@@ -1,11 +1,10 @@
 {
-  "name": "Example Plugin",
-  "author": "John Doe",
+  "name": "Nested Desktop",
+  "author": "xXJSONDeruloXx",
   "flags": ["debug", "root"],
   "api_version": 1,
   "publish": {
-    "tags": ["template", "root"],
-    "description": "Decky example plugin.",
-    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+    "tags": ["nested-desktop", "root"],
+    "description": "Create and launch nested desktop shortcuts for Steam Deck"
   }
 }

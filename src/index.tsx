@@ -5,18 +5,12 @@ import {
   staticClasses
 } from "@decky/ui";
 import {
-  addEventListener,
-  removeEventListener,
   callable,
   definePlugin,
   toaster,
-  // routerHook
 } from "@decky/api"
-import { FaShip } from "react-icons/fa";
+import { MdDesktopMac } from "react-icons/md";
 
-// import logo from "../assets/logo.png";
-
-// Get or create the shortcut ID for nested desktop
 const createNestedDesktopShortcut = callable<[], any>("create_nested_desktop_shortcut");
 const launchNestedDesktopShortcut = callable<[], any>("launch_nested_desktop_shortcut");
 const saveNestedDesktopShortcutId = callable<[shortcutId: number], boolean>("save_nested_desktop_shortcut_id");
@@ -135,7 +129,7 @@ function Content() {
   };
 
   return (
-    <PanelSection title="Panel Section">
+    <PanelSection title="Nested Desktop">
       <PanelSectionRow>
         <ButtonItem
           layout="below"
@@ -153,62 +147,15 @@ function Content() {
           {"Launch Nested Desktop"}
         </ButtonItem>
       </PanelSectionRow>
-
-      {/* <PanelSectionRow>
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <img src={logo} />
-        </div>
-      </PanelSectionRow> */}
-
-      {/*<PanelSectionRow>
-        <ButtonItem
-          layout="below"
-          onClick={() => {
-            Navigation.Navigate("/decky-plugin-test");
-            Navigation.CloseSideMenus();
-          }}
-        >
-          Router
-        </ButtonItem>
-      </PanelSectionRow>*/}
     </PanelSection>
   );
 };
 
 export default definePlugin(() => {
-  console.log("Template plugin initializing, this is called once on frontend startup")
-
-  // serverApi.routerHook.addRoute("/decky-plugin-test", DeckyPluginRouterTest, {
-  //   exact: true,
-  // });
-
-  // Add an event listener to the "timer_event" event from the backend
-  const listener = addEventListener<[
-    test1: string,
-    test2: boolean,
-    test3: number
-  ]>("timer_event", (test1, test2, test3) => {
-    console.log("Template got timer_event with:", test1, test2, test3)
-    toaster.toast({
-      title: "template got timer_event",
-      body: `${test1}, ${test2}, ${test3}`
-    });
-  });
-
   return {
-    // The name shown in various decky menus
-    name: "Test Plugin",
-    // The element displayed at the top of your plugin's menu
-    titleView: <div className={staticClasses.Title}>Decky Example Plugin</div>,
-    // The content of your plugin's menu
+    name: "Nested Desktop",
+    titleView: <div className={staticClasses.Title}>Nested Desktop</div>,
     content: <Content />,
-    // The icon displayed in the plugin list
-    icon: <FaShip />,
-    // The function triggered when your plugin unloads
-    onDismount() {
-      console.log("Unloading")
-      removeEventListener("timer_event", listener);
-      // serverApi.routerHook.removeRoute("/decky-plugin-test");
-    },
+    icon: <MdDesktopMac />,
   };
 });
