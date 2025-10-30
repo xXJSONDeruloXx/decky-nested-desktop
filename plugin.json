@@ -1,6 +1,6 @@
 {
   "name": "Nested Desktop",
-  "author": "xXJSONDeruloXx",
+  "author": "Kurt Himebauch (xXJSONDeruloXx)",
   "flags": ["debug", "root"],
   "api_version": 1,
   "publish": {
