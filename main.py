@@ -91,7 +91,6 @@ class Plugin:
                 except (ValueError, IOError) as e:
                     decky.logger.error(f"Error reading shortcut ID: {str(e)}")
             
-            # No valid shortcut ID found
             return {"success": False, "message": "No shortcut found. Please create one first."}
                 
         except Exception as e:

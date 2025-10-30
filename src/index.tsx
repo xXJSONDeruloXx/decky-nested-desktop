@@ -30,7 +30,6 @@ function Content() {
       }
 
       // Create the shortcut using Steam's API
-      // @ts-ignore - SteamClient is available at runtime
       const shortcutId = await SteamClient.Apps.AddShortcut(
         result.name,
         result.desktop_file,
@@ -54,21 +53,15 @@ function Content() {
       if (artworkResult.success && artworkResult.artwork) {
         const artwork = artworkResult.artwork;
         
-        // Apply artwork using SteamClient API
-        // Types: 0 = Grid (vertical), 1 = Hero (wide banner), 2 = Logo, 3 = GridH (horizontal)
-        // @ts-ignore - SteamClient is available at runtime
         if (artwork.grid) {
           SteamClient.Apps.SetCustomArtworkForApp(shortcutId, artwork.grid, "jpg", 0);
         }
-        // @ts-ignore
         if (artwork.hero) {
           SteamClient.Apps.SetCustomArtworkForApp(shortcutId, artwork.hero, "jpg", 1);
         }
-        // @ts-ignore
         if (artwork.logo) {
           SteamClient.Apps.SetCustomArtworkForApp(shortcutId, artwork.logo, "png", 2);
         }
-        // @ts-ignore
         if (artwork.gridH) {
           SteamClient.Apps.SetCustomArtworkForApp(shortcutId, artwork.gridH, "jpg", 3);
         }
@@ -102,7 +95,6 @@ function Content() {
       const shortcutId = result.shortcut_id;
       
       // Get the game ID from the app ID
-      // @ts-ignore - appStore is available at runtime
       const appOverview = appStore.GetAppOverviewByAppID(shortcutId);
       if (!appOverview) {
         toaster.toast({
@@ -113,7 +105,6 @@ function Content() {
       }
 
       // Launch via Steam's game running system
-      // @ts-ignore - SteamClient is available at runtime
       SteamClient.Apps.RunGame(appOverview.m_gameid, "", -1, 100);
       
       toaster.toast({
