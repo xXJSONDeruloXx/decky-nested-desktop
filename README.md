@@ -1,5 +1,7 @@
 # Nested Desktop
 
+![plugin view](assets/image.png)
+
 A Decky Loader plugin for creating and launching nested desktop shortcuts on Steam Deck.
 
 ## Features
